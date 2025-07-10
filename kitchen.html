@@ -1,1 +1,56 @@
-kitchen.html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>หลังร้าน - รายการออเดอร์</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    h1 { color: #333; }
+    .order { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+    .order button { margin-top: 10px; background-color: #4CAF50; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>🧑‍🍳 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
+  <div id="order-list">⏳ กำลังโหลดรายการ...</div>
+
+  <script>
+    async function fetchOrders() {
+      const res = await fetch('https://nam-pan-oder-app.vercel.app/api/orders');
+      const orders = await res.json();
+
+      const list = document.getElementById('order-list');
+      list.innerHTML = '';
+
+      if (orders.length === 0) {
+        list.innerHTML = '<p>ยังไม่มีรายการสั่งซื้อ</p>';
+        return;
+      }
+
+      orders.forEach((order, index) => {
+        const div = document.createElement('div');
+        div.className = 'order';
+        div.innerHTML = `
+          <strong>#${index + 1}</strong><br>
+          <b>ชื่อ:</b> ${order.name}<br>
+          <b>เมนู:</b> ${order.menu}<br>
+          <b>หวาน:</b> ${order.sweet}<br>
+          <b>ท้อปปิ้ง:</b> ${order.topping}<br>
+          <button onclick="markDone('${order.id}')">แจ้งลูกค้าว่าเสร็จแล้ว</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    async function markDone(orderId) {
+      await fetch(`https://nam-pan-oder-app.vercel.app/api/done/${orderId}`, { method: 'POST' });
+      alert('ส่งแจ้งเตือนลูกค้าเรียบร้อยแล้ว!');
+      fetchOrders();
+    }
+
+    fetchOrders();
+    setInterval(fetchOrders, 5000);
+  </script>
+</body>
+</html>
