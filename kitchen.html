@@ -16,41 +16,41 @@
   <div id="order-list">⏳ กำลังโหลดรายการ...</div>
 
   <script>
-    async function fetchOrders() {
-      const res = await fetch('https://nam-pan-oder-app.vercel.app/api/orders');
-      const orders = await res.json();
+  async function fetchOrders() {
+    const res = await fetch('/api/orders');
+    const orders = await res.json();
 
-      const list = document.getElementById('order-list');
-      list.innerHTML = '';
+    const list = document.getElementById('order-list');
+    list.innerHTML = '';
 
-      if (orders.length === 0) {
-        list.innerHTML = '<p>ยังไม่มีรายการสั่งซื้อ</p>';
-        return;
-      }
-
-      orders.forEach((order, index) => {
-        const div = document.createElement('div');
-        div.className = 'order';
-        div.innerHTML = `
-          <strong>#${index + 1}</strong><br>
-          <b>ชื่อ:</b> ${order.name}<br>
-          <b>เมนู:</b> ${order.menu}<br>
-          <b>หวาน:</b> ${order.sweet}<br>
-          <b>ท้อปปิ้ง:</b> ${order.topping}<br>
-          <button onclick="markDone('${order.id}')">แจ้งลูกค้าว่าเสร็จแล้ว</button>
-        `;
-        list.appendChild(div);
-      });
+    if (orders.length === 0) {
+      list.innerHTML = '<p>ยังไม่มีรายการสั่งซื้อ</p>';
+      return;
     }
 
-    async function markDone(orderId) {
-      await fetch(`https://nam-pan-oder-app.vercel.app/api/done/${orderId}`, { method: 'POST' });
-      alert('ส่งแจ้งเตือนลูกค้าเรียบร้อยแล้ว!');
-      fetchOrders();
-    }
+    orders.forEach((order, index) => {
+      const div = document.createElement('div');
+      div.className = 'order';
+      div.innerHTML = `
+        <strong>#${index + 1}</strong><br>
+        <b>ชื่อ:</b> ${order.name}<br>
+        <b>เมนู:</b> ${order.item}<br>
+        <b>หวาน:</b> ${order.sweet}<br>
+        <b>ท้อปปิ้ง:</b> ${order.topping}<br>
+        <button onclick="markDone(${index})">แจ้งลูกค้าว่าเสร็จแล้ว</button>
+      `;
+      list.appendChild(div);
+    });
+  }
 
+  async function markDone(orderIndex) {
+    await fetch(`/api/done/${orderIndex}`, { method: 'POST' });
+    alert('ส่งแจ้งเตือนลูกค้าเรียบร้อยแล้ว!');
     fetchOrders();
-    setInterval(fetchOrders, 5000);
-  </script>
+  }
+
+  fetchOrders();
+  setInterval(fetchOrders, 5000);
+</script>
 </body>
 </html>
