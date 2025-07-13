@@ -13,16 +13,37 @@
       margin-bottom: 10px;
       border-radius: 5px;
     }
+    .order button {
+      margin-top: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
+</head>
+<body>
+  <h1>🧑‍🍳 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
+  <div id="order-list">⏳ กำลังโหลดรายการ...</div>
+
+  <!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      query,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
       authDomain: "nampanorder.firebaseapp.com",
       projectId: "nampanorder",
-      storageBucket: "nampanorder.firebasestorage.app",
+      storageBucket: "nampanorder.appspot.com",
       messagingSenderId: "123907265628",
       appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
     };
@@ -30,42 +51,39 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const list = document.getElementById("order-list");
-    list.innerHTML = "⏳ กำลังโหลดรายการ...";
+    async function fetchOrders() {
+      const list = document.getElementById('order-list');
+      list.innerHTML = '⏳ กำลังโหลดรายการ...';
 
-    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+      const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
 
-    onSnapshot(q, (snapshot) => {
-      list.innerHTML = "";
-
-      if (snapshot.empty) {
-        list.innerHTML = "<p>ยังไม่มีรายการสั่งซื้อ</p>";
+      if (querySnapshot.empty) {
+        list.innerHTML = '<p>ยังไม่มีรายการสั่งซื้อ</p>';
         return;
       }
 
-      let orderNumber = 1;
-      snapshot.forEach((doc) => {
+      list.innerHTML = '';
+      let count = 1;
+      querySnapshot.forEach((doc) => {
         const data = doc.data();
-        const time = data.timestamp?.toDate().toLocaleTimeString("th-TH") || "-";
-
-        const div = document.createElement("div");
-        div.className = "order";
+        const div = document.createElement('div');
+        div.className = 'order';
         div.innerHTML = `
-          <strong>#${orderNumber}</strong><br>
+          <strong>#${count++}</strong><br>
           <b>ชื่อ:</b> ${data.name}<br>
           <b>เมนู:</b> ${data.item}<br>
           <b>หวาน:</b> ${data.sweet}<br>
-          <b>ท้อปปิ้ง:</b> ${data.topping || "-"}<br>
-          <b>เวลา:</b> ${time}
+          <b>ท้อปปิ้ง:</b> ${data.topping || '-'}<br>
+          <b>รายละเอียดเพิ่มเติม:</b> ${data.note || '-'}<br>
+          <b>เวลา:</b> ${data.timestamp || '-'}<br>
         `;
         list.appendChild(div);
-        orderNumber++;
       });
-    });
+    }
+
+    fetchOrders();
+    setInterval(fetchOrders, 5000); // อัปเดตทุก 5 วิ
   </script>
-</head>
-<body>
-  <h1>🧑‍🍳 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
-  <div id="order-list">⏳ กำลังโหลดรายการ...</div>
 </body>
 </html>
