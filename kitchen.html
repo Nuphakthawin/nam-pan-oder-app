@@ -43,21 +43,23 @@
         return;
       }
 
-      snapshot.forEach((doc, index) => {
+      let orderNumber = 1;
+      snapshot.forEach((doc) => {
         const data = doc.data();
         const time = data.timestamp?.toDate().toLocaleTimeString("th-TH") || "-";
 
         const div = document.createElement("div");
         div.className = "order";
         div.innerHTML = `
-          <strong>#${index + 1}</strong><br>
+          <strong>#${orderNumber}</strong><br>
           <b>ชื่อ:</b> ${data.name}<br>
           <b>เมนู:</b> ${data.item}<br>
           <b>หวาน:</b> ${data.sweet}<br>
-          <b>ท้อปปิ้ง:</b> ${data.topping}<br>
+          <b>ท้อปปิ้ง:</b> ${data.topping || "-"}<br>
           <b>เวลา:</b> ${time}
         `;
         list.appendChild(div);
+        orderNumber++;
       });
     });
   </script>
