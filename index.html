@@ -4,82 +4,72 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>น้ำปั่นตลาดโต้รุ่ง</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
-      authDomain: "nampanorder.firebaseapp.com",
-      projectId: "nampanorder",
-      storageBucket: "nampanorder.firebasestorage.app",
-      messagingSenderId: "123907265628",
-      appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    async function submitOrder(e) {
-      e.preventDefault();
-
-      const name = document.querySelector('input[name="name"]').value;
-      const item = document.querySelector('select[name="menu"]').value;
-      const sweet = document.querySelector('input[name="sweet"]:checked')?.value || "";
-      const topping = document.querySelector('input[name="topping"]:checked')?.value || "";
-
-      if (!name || !item || !sweet) {
-        alert("กรุณากรอกข้อมูลให้ครบ");
-        return;
-      }
-
-      try {
-        await addDoc(collection(db, "orders"), {
-          name,
-          item,
-          sweet,
-          topping,
-          timestamp: Timestamp.now()
-        });
-
-        alert("ขอบคุณที่อุดหนุนครับผม!");
-        document.querySelector("form").reset();
-      } catch (error) {
-        alert("เกิดข้อผิดพลาดในการส่งออเดอร์");
-        console.error(error);
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      document.querySelector("form").addEventListener("submit", submitOrder);
-    });
-  </script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
+    h1 { color: #4CAF50; }
+    label { font-weight: bold; }
+    textarea, input[type="text"], select { width: 100%; padding: 6px; margin-bottom: 12px; }
+    button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+  </style>
 </head>
 <body>
-  <h1>น้ำปั่นตลาดโต้รุ่ง</h1>
-  <form>
+  <h1>🧋 น้ำปั่นตลาดโต้รุ่ง</h1>
+  <form id="order-form">
     <label>เลือกเมนู:</label>
-    <select name="menu">
+    <select name="item" required>
       <option>น้ำส้มปั่น</option>
       <option>น้ำแตงโมปั่น</option>
       <option>น้ำมะนาวปั่น</option>
       <option>น้ำสับปะรดปั่น</option>
       <option>น้ำกล้วยปั่น</option>
-    </select><br><br>
+    </select>
 
     <label>ระดับความหวาน:</label><br>
-    <input type="radio" name="sweet" value="ไม่หวาน"> ไม่หวาน<br>
+    <input type="radio" name="sweet" value="ไม่หวาน" required> ไม่หวาน<br>
     <input type="radio" name="sweet" value="หวานน้อย"> หวานน้อย<br>
     <input type="radio" name="sweet" value="หวานกลาง"> หวานกลาง<br>
     <input type="radio" name="sweet" value="หวานมาก"> หวานมาก<br><br>
 
-    <label>ท้อปปิ้ง:</label>
+    <label>ท้อปปิ้ง:</label><br>
     <input type="checkbox" name="topping" value="นม"> นม<br><br>
 
     <label>ชื่อ:</label>
-    <input type="text" name="name"><br><br>
+    <input type="text" name="name" required><br>
+
+    <label>รายละเอียดเพิ่มเติม:</label><br>
+    <textarea name="note" rows="3" placeholder="เช่น ไม่ใส่น้ำแข็ง หรือ ใส่หลอด 2 อัน"></textarea><br>
 
     <button type="submit">สั่งน้ำ</button>
   </form>
+
+  <script>
+    document.getElementById('order-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const form = e.target;
+
+      const order = {
+        name: form.name.value,
+        item: form.item.value,
+        sweet: form.querySelector('input[name="sweet"]:checked')?.value || '',
+        topping: form.querySelector('input[name="topping"]:checked')?.value || '',
+        note: form.note.value,
+        timestamp: new Date().toLocaleTimeString()
+      };
+
+      const res = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order)
+      });
+
+      if (res.ok) {
+        alert("เราได้คำสั่งซื้อแล้ว กรุณารอสักครู่ เมื่อเสร็จแล้ว เราจะแจ้งลูกค้าทางไลน์ ขอบคุณครับ");
+        form.reset();
+      } else {
+        alert("ส่งออเดอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้งครับ");
+      }
+    });
+  </script>
 </body>
 </html>
