@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>หลังร้าน - รายการออเดอร์</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
@@ -13,56 +13,57 @@
       margin-bottom: 10px;
       border-radius: 5px;
     }
-    .order button {
-      margin-top: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
   </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
+      authDomain: "nampanorder.firebaseapp.com",
+      projectId: "nampanorder",
+      storageBucket: "nampanorder.firebasestorage.app",
+      messagingSenderId: "123907265628",
+      appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const list = document.getElementById("order-list");
+    list.innerHTML = "⏳ กำลังโหลดรายการ...";
+
+    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      list.innerHTML = "";
+
+      if (snapshot.empty) {
+        list.innerHTML = "<p>ยังไม่มีรายการสั่งซื้อ</p>";
+        return;
+      }
+
+      snapshot.forEach((doc, index) => {
+        const data = doc.data();
+        const time = data.timestamp?.toDate().toLocaleTimeString("th-TH") || "-";
+
+        const div = document.createElement("div");
+        div.className = "order";
+        div.innerHTML = `
+          <strong>#${snapshot.size - index}</strong><br>
+          <b>ชื่อ:</b> ${data.name}<br>
+          <b>เมนู:</b> ${data.item}<br>
+          <b>หวาน:</b> ${data.sweet}<br>
+          <b>ท้อปปิ้ง:</b> ${data.topping}<br>
+          <b>เวลา:</b> ${time}
+        `;
+        list.appendChild(div);
+      });
+    });
+  </script>
 </head>
 <body>
   <h1>🧑‍🍳 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
   <div id="order-list">⏳ กำลังโหลดรายการ...</div>
-
-  <script>
-    async function fetchOrders() {
-      try {
-        const res = await fetch('/api/order');
-        const orders = await res.json();
-
-        const list = document.getElementById('order-list');
-        list.innerHTML = '';
-
-        if (!orders.length) {
-          list.innerHTML = '<p>ยังไม่มีรายการสั่งซื้อ</p>';
-          return;
-        }
-
-        orders.forEach((order, index) => {
-          const div = document.createElement('div');
-          div.className = 'order';
-          div.innerHTML = `
-            <strong>#${index + 1}</strong><br>
-            <b>ชื่อ:</b> ${order.name}<br>
-            <b>เมนู:</b> ${order.item}<br>
-            <b>หวาน:</b> ${order.sweet}<br>
-            <b>ท้อปปิ้ง:</b> ${order.topping || '-'}<br>
-            <b>เวลา:</b> ${new Date(order.timestamp).toLocaleTimeString()}<br>
-          `;
-          list.appendChild(div);
-        });
-
-      } catch (err) {
-        document.getElementById('order-list').innerHTML = '<p>เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
-      }
-    }
-
-    fetchOrders();
-    setInterval(fetchOrders, 5000);
-  </script>
 </body>
 </html>
