@@ -12,7 +12,6 @@ const firebaseConfig = {
   appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -21,18 +20,24 @@ export default async function handler(req, res) {
     try {
       const { name, item, sweet, topping, note, timestamp } = req.body;
 
+      // ✅ เพิ่มตรงนี้
+      console.log('📦 รับออเดอร์ใหม่:');
+      console.log('ชื่อ:', name);
+      console.log('เมนู:', item);
+      console.log('หวาน:', sweet);
+      console.log('ท้อปปิ้ง:', topping);
+      console.log('รายละเอียด:', note);
+      console.log('เวลา:', timestamp);
+
       await addDoc(collection(db, "orders"), {
-        name,
-        item,
-        sweet,
-        topping,
-        note,
-        timestamp
+        name, item, sweet, topping, note, timestamp
       });
+
+      console.log('✅ บันทึกลง Firebase เรียบร้อย');
 
       res.status(200).json({ message: "Order saved to Firebase" });
     } catch (error) {
-      console.error("Firebase error:", error);
+      console.error("❌ Firebase error:", error);
       res.status(500).json({ error: "Failed to save order to Firebase." });
     }
   } else {
