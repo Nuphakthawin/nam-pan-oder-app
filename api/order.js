@@ -1,19 +1,41 @@
-let orders = []; // เก็บออเดอร์ไว้ในหน่วยความจำชั่วคราว
+// /api/order.js
 
-export default function handler(req, res) {
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
+  authDomain: "nampanorder.firebaseapp.com",
+  projectId: "nampanorder",
+  storageBucket: "nampanorder.appspot.com",
+  messagingSenderId: "123907265628",
+  appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const { name, item, sweet, topping, timestamp } = req.body;
+    try {
+      const { name, item, sweet, topping, note, timestamp } = req.body;
 
-    if (!name || !item || !sweet) {
-      return res.status(400).json({ error: 'ข้อมูลไม่ครบ' });
+      await addDoc(collection(db, "orders"), {
+        name,
+        item,
+        sweet,
+        topping,
+        note,
+        timestamp
+      });
+
+      res.status(200).json({ message: "Order saved to Firebase" });
+    } catch (error) {
+      console.error("Firebase error:", error);
+      res.status(500).json({ error: "Failed to save order to Firebase." });
     }
-
-    orders.push({ name, item, sweet, topping, timestamp });
-    res.status(200).json({ message: 'Order received' });
-
-  } else if (req.method === 'GET') {
-    res.status(200).json(orders);
   } else {
-    res.status(405).json({ message: 'Method Not Allowed' });
+    res.status(405).json({ message: "Method Not Allowed" });
   }
 }
