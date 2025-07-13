@@ -1,62 +1,85 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>น้ำปั่นตลาดโต้รุ่ง</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
+      authDomain: "nampanorder.firebaseapp.com",
+      projectId: "nampanorder",
+      storageBucket: "nampanorder.firebasestorage.app",
+      messagingSenderId: "123907265628",
+      appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function submitOrder(e) {
+      e.preventDefault();
+
+      const name = document.querySelector('input[name="name"]').value;
+      const item = document.querySelector('select[name="menu"]').value;
+      const sweet = document.querySelector('input[name="sweet"]:checked')?.value || "";
+      const topping = document.querySelector('input[name="topping"]:checked')?.value || "";
+
+      if (!name || !item || !sweet) {
+        alert("กรุณากรอกข้อมูลให้ครบ");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "orders"), {
+          name,
+          item,
+          sweet,
+          topping,
+          timestamp: Timestamp.now()
+        });
+
+        alert("ขอบคุณที่อุดหนุนครับผม!");
+        document.querySelector("form").reset();
+      } catch (error) {
+        alert("เกิดข้อผิดพลาดในการส่งออเดอร์");
+        console.error(error);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.querySelector("form").addEventListener("submit", submitOrder);
+    });
+  </script>
 </head>
 <body>
-  <h1>🍹 น้ำปั่นตลาดโต้รุ่ง</h1>
-  <form id="order-form">
+  <h1>น้ำปั่นตลาดโต้รุ่ง</h1>
+  <form>
     <label>เลือกเมนู:</label>
-    <select id="item">
-      <option value="น้ำส้มปั่น">น้ำส้มปั่น</option>
-      <option value="น้ำแตงโมปั่น">น้ำแตงโมปั่น</option>
-      <option value="น้ำมะนาวปั่น">น้ำมะนาวปั่น</option>
-      <option value="น้ำสับปะรดปั่น">น้ำสับปะรดปั่น</option>
-      <option value="น้ำกล้วยปั่น">น้ำกล้วยปั่น</option>
+    <select name="menu">
+      <option>น้ำส้มปั่น</option>
+      <option>น้ำแตงโมปั่น</option>
+      <option>น้ำมะนาวปั่น</option>
+      <option>น้ำสับปะรดปั่น</option>
+      <option>น้ำกล้วยปั่น</option>
     </select><br><br>
 
     <label>ระดับความหวาน:</label><br>
-    <input type="radio" name="sweet" value="ไม่หวาน" required> ไม่หวาน<br>
+    <input type="radio" name="sweet" value="ไม่หวาน"> ไม่หวาน<br>
     <input type="radio" name="sweet" value="หวานน้อย"> หวานน้อย<br>
     <input type="radio" name="sweet" value="หวานกลาง"> หวานกลาง<br>
     <input type="radio" name="sweet" value="หวานมาก"> หวานมาก<br><br>
 
     <label>ท้อปปิ้ง:</label>
-    <input type="checkbox" id="topping" value="นม"> นม<br><br>
+    <input type="checkbox" name="topping" value="นม"> นม<br><br>
 
     <label>ชื่อ:</label>
-    <input type="text" id="name" required><br><br>
+    <input type="text" name="name"><br><br>
 
     <button type="submit">สั่งน้ำ</button>
   </form>
-
-  <p id="thanks-message" style="display:none;">ขอบคุณที่อุดหนุนครับผม 🙏</p>
-
-  <script>
-    document.getElementById("order-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const name = document.getElementById("name").value;
-      const item = document.getElementById("item").value;
-      const sweet = document.querySelector('input[name="sweet"]:checked').value;
-      const topping = document.getElementById("topping").checked ? "นม" : "ไม่มี";
-      const timestamp = new Date().toISOString();
-
-      const res = await fetch("/api/order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, item, sweet, topping, timestamp }),
-      });
-
-      if (res.ok) {
-        document.getElementById("thanks-message").style.display = "block";
-        document.getElementById("order-form").reset();
-      } else {
-        alert("ส่งออเดอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้งครับ");
-      }
-    });
-  </script>
 </body>
 </html>
