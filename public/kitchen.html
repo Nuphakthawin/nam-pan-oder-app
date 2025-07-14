@@ -3,41 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>หลังร้าน - รายการออเดอร์</title>
+  <title>หลังร้าน - รายการออเดอร์ล่าสุด</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    h1 { color: #333; }
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    h1 { color: #4CAF50; }
     .order {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 5px;
+      border: 1px solid #ddd;
+      padding: 12px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      background-color: #f9f9f9;
     }
-    .order button {
-      margin-top: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+    .order strong { color: #4CAF50; font-size: 1.1em; }
   </style>
 </head>
 <body>
-  <h1>🧑‍🍳 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
-  <div id="order-list">⏳ กำลังโหลดรายการ...</div>
+  <h1>หลังร้าน - รายการออเดอร์ล่าสุด</h1>
+  <div id="order-list">กำลังโหลดข้อมูล...</div>
 
-  <!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      getDocs,
-      query,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
@@ -51,39 +37,42 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    const list = document.getElementById('order-list');
+    let previousHtml = '';
+
     async function fetchOrders() {
-      const list = document.getElementById('order-list');
-      list.innerHTML = '⏳ กำลังโหลดรายการ...';
+      const q = query(collection(db, "orders"), orderBy("timestamp", "desc"), limit(10));
+      const snapshot = await getDocs(q);
 
-      const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(q);
+      const orders = snapshot.docs.map(doc => doc.data());
+      const html = orders.map((order, index) => `
+        <div class="order">
+          <strong>#${orders.length - index}</strong><br>
+          <b>ชื่อ:</b> ${order.name}<br>
+          <b>เมนู:</b> ${order.item}<br>
+          <b>หวาน:</b> ${order.sweet}<br>
+          <b>ท้อปปิ้ง:</b> ${order.topping || '-'}<br>
+          <b>รายละเอียดเพิ่มเติม:</b> ${order.note || '-'}<br>
+          <b>เวลา:</b> ${formatTime(order.timestamp)}<br>
+        </div>
+      `).join('');
 
-      if (querySnapshot.empty) {
-        list.innerHTML = '<p>ยังไม่มีรายการสั่งซื้อ</p>';
-        return;
+      if (html !== previousHtml) {
+        list.innerHTML = html;
+        previousHtml = html;
       }
+    }
 
-      list.innerHTML = '';
-      let count = 1;
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const div = document.createElement('div');
-        div.className = 'order';
-        div.innerHTML = `
-          <strong>#${count++}</strong><br>
-          <b>ชื่อ:</b> ${data.name}<br>
-          <b>เมนู:</b> ${data.item}<br>
-          <b>หวาน:</b> ${data.sweet}<br>
-          <b>ท้อปปิ้ง:</b> ${data.topping || '-'}<br>
-          <b>รายละเอียดเพิ่มเติม:</b> ${data.note || '-'}<br>
-          <b>เวลา:</b> ${data.timestamp || '-'}<br>
-        `;
-        list.appendChild(div);
-      });
+    function formatTime(ts) {
+      if (typeof ts === 'object' && ts.seconds) {
+        const date = new Date(ts.seconds * 1000);
+        return date.toLocaleTimeString();
+      }
+      return ts || '-';
     }
 
     fetchOrders();
-    setInterval(fetchOrders, 5000); // อัปเดตทุก 5 วิ
+    setInterval(fetchOrders, 5000); // อัปเดตทุก 5 วินาที
   </script>
 </body>
 </html>
