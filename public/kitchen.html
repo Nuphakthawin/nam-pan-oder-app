@@ -96,20 +96,24 @@
 
         // เวลา
         let time = "-";
-        if (data.timestamp?.seconds) {
-          const date = new Date(data.timestamp.seconds * 1000);
-          time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        } else if (typeof data.timestamp === "string") {
-          const parsed = new Date(data.timestamp);
-          if (!isNaN(parsed)) {
-            time = parsed.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        try {
+          if (data.timestamp?.seconds) {
+            const date = new Date(data.timestamp.seconds * 1000);
+            time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          } else if (typeof data.timestamp === "string" || typeof data.timestamp === "number") {
+            const parsed = new Date(data.timestamp);
+            if (!isNaN(parsed)) {
+              time = parsed.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
           }
+        } catch (e) {
+          console.error("❌ ไม่สามารถแปลงเวลา:", e);
         }
 
         // แจ้งเตือนเมื่อมีออเดอร์ใหม่
         if (!lastOrderIds.has(id) && Notification.permission === "granted") {
           new Notification("📦 ออเดอร์ใหม่!", {
-            body: `${data.name || "ลูกค้า"} สั่ง ${data.item}`
+            body: `${data.name || "ลูกค้า"} สั่ง ${data.item || "ไม่ระบุเมนู"}`
           });
         }
 
@@ -130,9 +134,14 @@
       lastOrderIds = newOrderIds;
     });
 
+    // ฟังก์ชันลบออเดอร์
     window.deleteOrder = async function (id) {
-      if (confirm("ยืนยันลบออเดอร์นี้หรือไม่?")) {
-        await deleteDoc(doc(db, "orders", id));
+      if (confirm("ลบออเดอร์นี้จริงหรือไม่?")) {
+        try {
+          await deleteDoc(doc(db, "orders", id));
+        } catch (e) {
+          alert("❌ ลบไม่สำเร็จ: " + e.message);
+        }
       }
     };
   </script>
