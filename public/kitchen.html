@@ -33,19 +33,33 @@
     const db = getFirestore(app);
 
     const ordersDiv = document.getElementById("orders");
-    let lastOrderCount = 0;
+    let lastOrderIds = new Set();
 
     const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
 
+    // ขอสิทธิ์แจ้งเตือนล่วงหน้า
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
     onSnapshot(q, (snapshot) => {
-      const orders = snapshot.docs.map((doc, index) => {
+      const newOrderIds = new Set();
+      let html = "";
+
+      snapshot.forEach((doc, index) => {
         const data = doc.data();
+        newOrderIds.add(doc.id);
+
+        // แปลง timestamp เป็นเวลาอ่านง่าย
         let time = "-";
         if (data.timestamp?.seconds) {
           time = new Date(data.timestamp.seconds * 1000).toLocaleTimeString();
+        } else if (typeof data.timestamp === "string") {
+          const parsed = new Date(data.timestamp);
+          if (!isNaN(parsed)) time = parsed.toLocaleTimeString();
         }
 
-        return `
+        html += `
           <div class="order">
             <div class="order-number">#${snapshot.size - index}</div>
             <div>ชื่อ: ${data.name || "-"}</div>
@@ -55,24 +69,19 @@
             <div>เวลา: ${time}</div>
           </div>
         `;
-      }).join("");
 
-      ordersDiv.innerHTML = orders;
-
-      // ✅ แจ้งเตือนเมื่อมีออเดอร์เพิ่มเข้ามา
-      if (snapshot.size > lastOrderCount) {
-        if (Notification.permission === "granted") {
-          new Notification("📦 ออเดอร์ใหม่เข้ามาแล้ว!");
-        } else if (Notification.permission !== "denied") {
-          Notification.requestPermission().then(permission => {
-            if (permission === "granted") {
-              new Notification("📦 ออเดอร์ใหม่เข้ามาแล้ว!");
-            }
-          });
+        // ถ้ามีออเดอร์ใหม่ (id ยังไม่เคยเห็น)
+        if (!lastOrderIds.has(doc.id)) {
+          if (Notification.permission === "granted") {
+            new Notification("📦 ออเดอร์ใหม่!", {
+              body: `${data.name || "ลูกค้า"} สั่ง ${data.item}`,
+            });
+          }
         }
-      }
+      });
 
-      lastOrderCount = snapshot.size;
+      ordersDiv.innerHTML = html;
+      lastOrderIds = newOrderIds;
     });
   </script>
 </body>
