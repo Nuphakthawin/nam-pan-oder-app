@@ -1,16 +1,68 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>หลังร้าน - รายการออเดอร์</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>หลังร้าน - รายการออเดอร์ล่าสุด</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #ffffff;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    .order {
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+      padding: 10px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      position: relative;
+    }
+    .order-number {
+      font-weight: bold;
+      color: #333;
+    }
+    .note {
+      font-style: italic;
+      color: #555;
+    }
+    .time {
+      font-size: 0.9em;
+      color: #777;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #ff4d4d;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <h1>หลังร้าน - รายการออเดอร์ ล่าสุด</h1>
+  <h1>หลังร้าน - รายการออเดอร์ล่าสุด</h1>
   <div id="orders">กำลังโหลดออเดอร์...</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      onSnapshot,
+      query,
+      orderBy,
+      deleteDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
@@ -23,39 +75,66 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-
     const ordersDiv = document.getElementById("orders");
+    let lastOrderIds = new Set();
 
-    async function loadOrders() {
-      try {
-        const querySnapshot = await getDocs(collection(db, "orders"));
-        const orders = [];
-        querySnapshot.forEach(doc => orders.push(doc.data()));
-        
-        if (orders.length === 0) {
-          ordersDiv.innerText = "ยังไม่มีออเดอร์";
-          return;
-        }
+    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
 
-        orders.reverse(); // แสดงล่าสุดบนสุด
-        ordersDiv.innerHTML = orders.map((order, i) => `
-          <div style="margin-bottom: 1em;">
-            <strong>#${i + 1}</strong><br>
-            ชื่อ: ${order.name}<br>
-            เมนู: ${order.item}<br>
-            หวาน: ${order.sweet}<br>
-            ท้อปปิ้ง: ${order.topping || "-"}<br>
-            รายละเอียดเพิ่มเติม: ${order.note || "-"}<br>
-            เวลา: ${new Date(order.timestamp?.seconds * 1000).toLocaleTimeString() || "-"}
-          </div>
-        `).join('');
-      } catch (e) {
-        console.error("โหลดออเดอร์ผิดพลาด:", e);
-        ordersDiv.innerText = "โหลดออเดอร์ไม่สำเร็จ";
-      }
+    // ขอสิทธิ์แจ้งเตือน
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
     }
 
-    loadOrders();
+    onSnapshot(q, (snapshot) => {
+      let html = "";
+      const newOrderIds = new Set();
+
+      snapshot.forEach((docSnap, index) => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        newOrderIds.add(id);
+
+        // เวลา
+        let time = "-";
+        if (data.timestamp?.seconds) {
+          const date = new Date(data.timestamp.seconds * 1000);
+          time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } else if (typeof data.timestamp === "string") {
+          const parsed = new Date(data.timestamp);
+          if (!isNaN(parsed)) {
+            time = parsed.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          }
+        }
+
+        // แจ้งเตือนเมื่อมีออเดอร์ใหม่
+        if (!lastOrderIds.has(id) && Notification.permission === "granted") {
+          new Notification("📦 ออเดอร์ใหม่!", {
+            body: `${data.name || "ลูกค้า"} สั่ง ${data.item}`
+          });
+        }
+
+        html += `
+          <div class="order">
+            <button class="delete-btn" onclick="deleteOrder('${id}')">ลบ</button>
+            <div class="order-number">#${snapshot.size - index}</div>
+            <div>ชื่อ: ${data.name || "-"}</div>
+            <div>เมนู: ${data.item || "-"}<br>หวาน: ${data.sweet || "-"}</div>
+            <div>ท้อปปิ้ง: ${data.topping || "-"}</div>
+            <div class="note">รายละเอียดเพิ่มเติม: ${data.note || "-"}</div>
+            <div class="time">เวลา: ${time}</div>
+          </div>
+        `;
+      });
+
+      ordersDiv.innerHTML = html;
+      lastOrderIds = newOrderIds;
+    });
+
+    window.deleteOrder = async function (id) {
+      if (confirm("ยืนยันลบออเดอร์นี้หรือไม่?")) {
+        await deleteDoc(doc(db, "orders", id));
+      }
+    };
   </script>
 </body>
 </html>
