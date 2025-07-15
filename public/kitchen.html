@@ -1,24 +1,16 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>หลังร้าน - รายการออเดอร์ล่าสุด</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; background-color: #fdfdfd; }
-    h1 { color: #4CAF50; }
-    .order { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 8px; background: #fff; }
-    .order-number { font-weight: bold; color: #333; }
-    .note { font-style: italic; color: #555; }
-  </style>
+  <meta charset="UTF-8">
+  <title>หลังร้าน - รายการออเดอร์</title>
 </head>
 <body>
-  <h1>หลังร้าน - รายการออเดอร์ล่าสุด</h1>
+  <h1>หลังร้าน - รายการออเดอร์ ล่าสุด</h1>
   <div id="orders">กำลังโหลดออเดอร์...</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
@@ -33,56 +25,37 @@
     const db = getFirestore(app);
 
     const ordersDiv = document.getElementById("orders");
-    let lastOrderIds = new Set();
 
-    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+    async function loadOrders() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "orders"));
+        const orders = [];
+        querySnapshot.forEach(doc => orders.push(doc.data()));
+        
+        if (orders.length === 0) {
+          ordersDiv.innerText = "ยังไม่มีออเดอร์";
+          return;
+        }
 
-    // ขอสิทธิ์แจ้งเตือนล่วงหน้า
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission();
+        orders.reverse(); // แสดงล่าสุดบนสุด
+        ordersDiv.innerHTML = orders.map((order, i) => `
+          <div style="margin-bottom: 1em;">
+            <strong>#${i + 1}</strong><br>
+            ชื่อ: ${order.name}<br>
+            เมนู: ${order.item}<br>
+            หวาน: ${order.sweet}<br>
+            ท้อปปิ้ง: ${order.topping || "-"}<br>
+            รายละเอียดเพิ่มเติม: ${order.note || "-"}<br>
+            เวลา: ${new Date(order.timestamp?.seconds * 1000).toLocaleTimeString() || "-"}
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error("โหลดออเดอร์ผิดพลาด:", e);
+        ordersDiv.innerText = "โหลดออเดอร์ไม่สำเร็จ";
+      }
     }
 
-    onSnapshot(q, (snapshot) => {
-      const newOrderIds = new Set();
-      let html = "";
-
-      snapshot.forEach((doc, index) => {
-        const data = doc.data();
-        newOrderIds.add(doc.id);
-
-        // แปลง timestamp เป็นเวลาอ่านง่าย
-        let time = "-";
-        if (data.timestamp?.seconds) {
-          time = new Date(data.timestamp.seconds * 1000).toLocaleTimeString();
-        } else if (typeof data.timestamp === "string") {
-          const parsed = new Date(data.timestamp);
-          if (!isNaN(parsed)) time = parsed.toLocaleTimeString();
-        }
-
-        html += `
-          <div class="order">
-            <div class="order-number">#${snapshot.size - index}</div>
-            <div>ชื่อ: ${data.name || "-"}</div>
-            <div>เมนู: ${data.item || "-"}<br>หวาน: ${data.sweet || "-"}</div>
-            <div>ท้อปปิ้ง: ${data.topping || "-"}</div>
-            <div class="note">รายละเอียดเพิ่มเติม: ${data.note || "-"}</div>
-            <div>เวลา: ${time}</div>
-          </div>
-        `;
-
-        // ถ้ามีออเดอร์ใหม่ (id ยังไม่เคยเห็น)
-        if (!lastOrderIds.has(doc.id)) {
-          if (Notification.permission === "granted") {
-            new Notification("📦 ออเดอร์ใหม่!", {
-              body: `${data.name || "ลูกค้า"} สั่ง ${data.item}`,
-            });
-          }
-        }
-      });
-
-      ordersDiv.innerHTML = html;
-      lastOrderIds = newOrderIds;
-    });
+    loadOrders();
   </script>
 </body>
 </html>
