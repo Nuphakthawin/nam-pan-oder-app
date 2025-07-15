@@ -1,7 +1,7 @@
 // /api/order.js
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
@@ -12,25 +12,33 @@ const firebaseConfig = {
   appId: "1:123907265628:web:b52fe97f50d4f97a57c299"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
-      const { name, item, sweet, topping, note, timestamp } = req.body;
+      const { name, item, sweet, topping, note } = req.body;
 
-      // ✅ เพิ่มตรงนี้
+      const timestamp = Timestamp.now();
+
+      // Log ออเดอร์ใหม่
       console.log('📦 รับออเดอร์ใหม่:');
       console.log('ชื่อ:', name);
       console.log('เมนู:', item);
       console.log('หวาน:', sweet);
       console.log('ท้อปปิ้ง:', topping);
-      console.log('รายละเอียด:', note);
-      console.log('เวลา:', timestamp);
+      console.log('รายละเอียดเพิ่มเติม:', note);
+      console.log('เวลา:', timestamp.toDate().toLocaleTimeString());
 
       await addDoc(collection(db, "orders"), {
-        name, item, sweet, topping, note, timestamp
+        name,
+        item,
+        sweet,
+        topping,
+        note,
+        timestamp
       });
 
       console.log('✅ บันทึกลง Firebase เรียบร้อย');
