@@ -78,7 +78,7 @@
     const ordersDiv = document.getElementById("orders");
     let lastOrderIds = new Set();
 
-    const q = query(collection(db, "orders"));
+    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
 
     // ขอสิทธิ์แจ้งเตือน
     if ("Notification" in window && Notification.permission !== "granted") {
@@ -86,52 +86,66 @@
     }
 
     onSnapshot(q, (snapshot) => {
-  console.log("📦 Snapshot รับข้อมูลแล้ว:", snapshot.size);
-  let html = "";
-  const newOrderIds = new Set();
-  console.log("✅ Firebase เชื่อมต่อสำเร็จ");
+      console.log("📦 Snapshot รับข้อมูลแล้ว:", snapshot.size);
+      let html = "";
+      const newOrderIds = new Set();
+      console.log("✅ Firebase เชื่อมต่อสำเร็จ");
 
-  snapshot.forEach((docSnap, index) => {
-    const data = docSnap.data();
-    const id = docSnap.id;
-    newOrderIds.add(id);
+      snapshot.forEach((docSnap, index) => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        newOrderIds.add(id);
 
-    // เวลา
-    let time = "-";
-    try {
-      if (data.timestamp?.seconds) {
-        const date = new Date(data.timestamp.seconds * 1000);
-        time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      } else if (typeof data.timestamp === "string" || typeof data.timestamp === "number") {
-        const parsed = new Date(data.timestamp);
-        if (!isNaN(parsed)) {
-          time = parsed.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // เวลา
+        let time = "-";
+        try {
+          if (data.timestamp?.seconds) {
+            const date = new Date(data.timestamp.seconds * 1000);
+            time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          } else if (typeof data.timestamp === "string" || typeof data.timestamp === "number") {
+            const parsed = new Date(data.timestamp);
+            if (!isNaN(parsed)) {
+              time = parsed.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+          }
+        } catch (e) {
+          console.error("❌ ไม่สามารถแปลงเวลา:", e);
+        }
+
+        // แจ้งเตือนเมื่อมีออเดอร์ใหม่
+        if (!lastOrderIds.has(id) && Notification.permission === "granted") {
+          new Notification("📦 ออเดอร์ใหม่!", {
+            body: `${data.name || "ลูกค้า"} สั่ง ${data.item || "ไม่ระบุเมนู"}`
+          });
+        }
+
+        html += `
+          <div class="order">
+            <button class="delete-btn" onclick="deleteOrder('${id}')">ลบ</button>
+            <div class="order-number">#${snapshot.size - index}</div>
+            <div>ชื่อ: ${data.name || "-"}</div>
+            <div>เมนู: ${data.item || "-"}<br>หวาน: ${data.sweet || "-"}</div>
+            <div>ท้อปปิ้ง: ${data.topping || "-"}</div>
+            <div class="note">รายละเอียดเพิ่มเติม: ${data.note || "-"}</div>
+            <div class="time">เวลา: ${time}</div>
+          </div>
+        `;
+      });
+
+      ordersDiv.innerHTML = html;
+      lastOrderIds = newOrderIds;
+    });
+
+    // ฟังก์ชันลบออเดอร์
+    window.deleteOrder = async function (id) {
+      if (confirm("ลบออเดอร์นี้จริงหรือไม่?")) {
+        try {
+          await deleteDoc(doc(db, "orders", id));
+        } catch (e) {
+          alert("❌ ลบไม่สำเร็จ: " + e.message);
         }
       }
-    } catch (e) {
-      console.error("❌ ไม่สามารถแปลงเวลา:", e);
-    }
-
-    // แจ้งเตือนเมื่อมีออเดอร์ใหม่
-    if (!lastOrderIds.has(id) && Notification.permission === "granted") {
-      new Notification("📦 ออเดอร์ใหม่!", {
-        body: `${data.name || "ลูกค้า"} สั่ง ${data.item || "ไม่ระบุเมนู"}`
-      });
-    }
-
-    html += `
-      <div class="order">
-        <button class="delete-btn" onclick="deleteOrder('${id}')">ลบ</button>
-        <div class="order-number">#${snapshot.size - index}</div>
-        <div>ชื่อ: ${data.name || "-"}</div>
-        <div>เมนู: ${data.item || "-"}<br>หวาน: ${data.sweet || "-"}</div>
-        <div>ท้อปปิ้ง: ${data.topping || "-"}</div>
-        <div class="note">รายละเอียดเพิ่มเติม: ${data.note || "-"}</div>
-        <div class="time">เวลา: ${time}</div>
-      </div>
-    `;
-  });
-
-  ordersDiv.innerHTML = html;
-  lastOrderIds = newOrderIds;
-});
+    };
+  </script>
+</body>
+</html>
