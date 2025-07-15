@@ -1,92 +1,104 @@
-<!DOCTYPE html>
-<html lang="th">
+<!DOCTYPE html><html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>หลังร้าน - รายการออเดอร์</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
-    h1 { color: #4CAF50; }
-    h3 { margin-bottom: 0; }
-    hr { margin: 20px 0; }
-    label { font-weight: bold; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    .order {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
   </style>
 </head>
 <body>
-  <h1>📋 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
-
-  <label for="soundUpload">🔊 เลือกเสียงเตือน:</label>
-  <input type="file" id="soundUpload" accept="audio/*"><br><br>
-
-  <div id="orders">กำลังโหลดออเดอร์...</div>
-
-  <script>
-    let lastOrderTime = null;
-    let customSound = null;
-
-    // เลือกไฟล์เสียงจากมือถือ
-    document.getElementById('soundUpload').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const fileURL = URL.createObjectURL(file);
-        customSound = new Audio(fileURL);
-        customSound.load();
-      }
-    });
+  <h1>หลังร้าน - รายการออเดอร์</h1>
+  <div id="order-list">
+    <p>Loading...</p>
+  </div>  <script>
+    let latestTimestamp = 0;
 
     async function fetchOrders() {
       try {
         const res = await fetch('https://firestore.googleapis.com/v1/projects/nampanorder/databases/(default)/documents/orders');
         const data = await res.json();
-        const ordersDiv = document.getElementById('orders');
-        ordersDiv.innerHTML = '';
+        const container = document.getElementById('order-list');
 
-        if (data.documents) {
-          const orders = data.documents.map((doc, index) => {
-            const d = doc.fields;
-            return {
-              id: index + 1,
-              name: d.name.stringValue,
-              item: d.item.stringValue,
-              sweet: d.sweet.stringValue,
-              topping: d.topping?.stringValue || '-',
-              note: d.note?.stringValue || '-',
-              timestamp: d.timestamp.stringValue
-            };
-          }).reverse();
-
-          orders.forEach(order => {
-            const el = document.createElement('div');
-            el.innerHTML = `
-              <h3>#${order.id}</h3>
-              <p>ชื่อ: ${order.name}</p>
-              <p>เมนู: ${order.item}</p>
-              <p>หวาน: ${order.sweet}</p>
-              <p>ท้อปปิ้ง: ${order.topping}</p>
-              <p>รายละเอียดเพิ่มเติม: ${order.note}</p>
-              <p>เวลา: ${order.timestamp}</p>
-              <hr>
-            `;
-            ordersDiv.appendChild(el);
-          });
-
-          // ตรวจสอบออเดอร์ล่าสุด
-          const latestTimestamp = orders[0]?.timestamp;
-          if (latestTimestamp !== lastOrderTime && lastOrderTime !== null) {
-            if (customSound) customSound.play();
-          }
-          lastOrderTime = latestTimestamp;
-        } else {
-          ordersDiv.innerHTML = "ยังไม่มีออเดอร์เข้ามา";
+        if (!data.documents) {
+          container.innerHTML = '<p>ยังไม่มีออเดอร์</p>';
+          return;
         }
+
+        let orders = data.documents.map(doc => {
+          const f = doc.fields;
+          return {
+            name: f.name?.stringValue || '-',
+            item: f.item?.stringValue || '-',
+            sweet: f.sweet?.stringValue || '-',
+            topping: f.topping?.stringValue || '-',
+            note: f.note?.stringValue || '-',
+            timestamp: f.timestamp?.stringValue || f.timestamp?.timestampValue || '-'
+          }
+        });
+
+        orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        let html = '';
+        orders.forEach((order, index) => {
+          const time = new Date(order.timestamp).toLocaleTimeString('th-TH');
+          html += `
+            <div class="order">
+              <b>#${orders.length - index}</b><br>
+              ชื่อ: ${order.name}<br>
+              เมนู: ${order.item}<br>
+              หวาน: ${order.sweet}<br>
+              ท้อปปิ้ง: ${order.topping || '-'}<br>
+              รายละเอียดเพิ่มเติม: ${order.note || '-'}<br>
+              เวลา: ${time}
+            </div>
+          `;
+
+          const currentTS = new Date(order.timestamp).getTime();
+          if (currentTS > latestTimestamp) {
+            latestTimestamp = currentTS;
+            sendNotification(order);
+          }
+        });
+
+        container.innerHTML = html;
       } catch (err) {
-        console.error("เกิดข้อผิดพลาด:", err);
-        document.getElementById('orders').innerText = "โหลดออเดอร์ไม่สำเร็จ";
+        console.error('load error', err);
+        document.getElementById('order-list').innerHTML = '<p>โหลดออเดอร์ไม่สำเร็จ</p>';
       }
     }
 
-    fetchOrders(); // เรียกทันทีตอนโหลด
-    setInterval(fetchOrders, 3000); // เช็คทุก 3 วินาที
-  </script>
-</body>
+    // Push Notification
+    async function sendNotification(order) {
+      if (Notification.permission === 'granted') {
+        new Notification('มีออเดอร์ใหม่!', {
+          body: `${order.name} สั่ง ${order.item}`
+        });
+      }
+    }
+
+    // ขอสิทธิ์แสดง Notification
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+
+    fetchOrders();
+    setInterval(fetchOrders, 5000); // รีโหลดทุก 5 วิ
+  </script></body>
 </html>
