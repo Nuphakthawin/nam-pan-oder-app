@@ -5,25 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>หลังร้าน - รายการออเดอร์ล่าสุด</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    h1 { color: #4CAF50; }
-    .order {
-      border: 1px solid #ddd;
-      padding: 12px;
-      margin-bottom: 15px;
-      border-radius: 6px;
-      background-color: #f9f9f9;
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
     }
-    .order strong { color: #4CAF50; font-size: 1.1em; }
+    h1 {
+      color: #e91e63;
+    }
+    .order {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      background-color: #fff8f9;
+    }
+    .order strong {
+      display: inline-block;
+      width: 120px;
+    }
   </style>
 </head>
 <body>
-  <h1>หลังร้าน - รายการออเดอร์ล่าสุด</h1>
-  <div id="order-list">กำลังโหลดข้อมูล...</div>
+  <h1>📦 หลังร้าน - รายการออเดอร์ล่าสุด</h1>
+
+  <label>เลือกรายการเสียงเตือน:</label>
+  <input type="file" id="sound-file" accept="audio/*"><br><br>
+
+  <div id="orders"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      orderBy,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
@@ -37,42 +57,56 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const list = document.getElementById('order-list');
-    let previousHtml = '';
+    const ordersDiv = document.getElementById("orders");
+    let latestOrderId = null;
+    let customSound = null;
 
-    async function fetchOrders() {
-      const q = query(collection(db, "orders"), orderBy("timestamp", "desc"), limit(10));
-      const snapshot = await getDocs(q);
-
-      const orders = snapshot.docs.map(doc => doc.data());
-      const html = orders.map((order, index) => `
-        <div class="order">
-          <strong>#${orders.length - index}</strong><br>
-          <b>ชื่อ:</b> ${order.name}<br>
-          <b>เมนู:</b> ${order.item}<br>
-          <b>หวาน:</b> ${order.sweet}<br>
-          <b>ท้อปปิ้ง:</b> ${order.topping || '-'}<br>
-          <b>รายละเอียดเพิ่มเติม:</b> ${order.note || '-'}<br>
-          <b>เวลา:</b> ${formatTime(order.timestamp)}<br>
-        </div>
-      `).join('');
-
-      if (html !== previousHtml) {
-        list.innerHTML = html;
-        previousHtml = html;
+    document.getElementById('sound-file').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        customSound = new Audio(URL.createObjectURL(file));
+        customSound.load();
+        alert('✅ ตั้งค่าเสียงเรียบร้อยแล้ว');
       }
-    }
+    });
 
-    function formatTime(ts) {
-      if (typeof ts === 'object' && ts.seconds) {
-        const date = new Date(ts.seconds * 1000);
-        return date.toLocaleTimeString();
+    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      ordersDiv.innerHTML = "";
+      let count = 1;
+
+      snapshot.forEach((doc) => {
+        const order = doc.data();
+        const time = order.timestamp?.seconds
+          ? new Date(order.timestamp.seconds * 1000).toLocaleTimeString()
+          : order.timestamp;
+
+        const noteText = order.note?.trim() ? order.note : "-";
+        const toppingText = order.topping?.trim() ? order.topping : "-";
+
+        const div = document.createElement("div");
+        div.className = "order";
+        div.innerHTML = `
+          <strong>#${count}</strong><br>
+          <strong>ชื่อ:</strong> ${order.name}<br>
+          <strong>เมนู:</strong> ${order.item}<br>
+          <strong>หวาน:</strong> ${order.sweet}<br>
+          <strong>ท้อปปิ้ง:</strong> ${toppingText}<br>
+          <strong>รายละเอียดเพิ่มเติม:</strong> ${noteText}<br>
+          <strong>เวลา:</strong> ${time}
+        `;
+        ordersDiv.appendChild(div);
+        count++;
+      });
+
+      // เล่นเสียงเมื่อมีออเดอร์ใหม่
+      const newestId = snapshot.docs[0]?.id;
+      if (latestOrderId && newestId !== latestOrderId && customSound) {
+        customSound.play().catch(err => console.warn("เล่นเสียงไม่สำเร็จ:", err));
       }
-      return ts || '-';
-    }
-
-    fetchOrders();
-    setInterval(fetchOrders, 5000); // อัปเดตทุก 5 วินาที
+      latestOrderId = newestId;
+    });
   </script>
 </body>
 </html>
