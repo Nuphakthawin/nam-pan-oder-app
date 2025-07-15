@@ -78,7 +78,7 @@
     const ordersDiv = document.getElementById("orders");
     let lastOrderIds = new Set();
 
-    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+    const q = query(collection(db, "orders"));
 
     // ขอสิทธิ์แจ้งเตือน
     if ("Notification" in window && Notification.permission !== "granted") {
