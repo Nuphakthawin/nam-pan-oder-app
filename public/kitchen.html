@@ -86,6 +86,9 @@
     }
 
     onSnapshot(q, (snapshot) => {
+  console.log("📦 Snapshot รับข้อมูลแล้ว:", snapshot.size);
+  ...
+});
       let html = "";
       const newOrderIds = new Set();
 
