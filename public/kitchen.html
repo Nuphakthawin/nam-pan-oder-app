@@ -57,6 +57,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
 
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyAsDV4gEEQZpJdK9sccKQLMG-vAEc9-KUc",
       authDomain: "nampanorder.firebaseapp.com",
@@ -69,30 +70,35 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const ordersDiv = document.getElementById("orders");
-
     let lastOrderIds = new Set();
 
+    const q = db.collection("orders").orderBy("timestamp", "desc");
+
+    // ขอสิทธิ์แจ้งเตือน
     if ("Notification" in window && Notification.permission !== "granted") {
       Notification.requestPermission();
     }
 
-    db.collection("orders").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+    q.onSnapshot(snapshot => {
+      console.log("📦 รับ snapshot แล้ว:", snapshot.size);
       let html = "";
       const newOrderIds = new Set();
 
-      snapshot.forEach((doc, index) => {
-        const data = doc.data();
-        const id = doc.id;
+      snapshot.forEach((docSnap, index) => {
+        const data = docSnap.data();
+        const id = docSnap.id;
         newOrderIds.add(id);
 
         let time = "-";
         try {
-          if (data.timestamp?.toDate) {
-            const date = data.timestamp.toDate();
-            time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          if (data.timestamp?.seconds) {
+            const date = new Date(data.timestamp.seconds * 1000);
+            time = date.toLocaleTimeString('th-TH', {
+              hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
           }
         } catch (e) {
-          console.error("❌ เวลาไม่ถูกต้อง:", e);
+          console.error("❌ แปลง timestamp ไม่ได้:", e);
         }
 
         if (!lastOrderIds.has(id) && Notification.permission === "granted") {
@@ -103,30 +109,11 @@
 
         html += `
           <div class="order">
-            <button class="delete-btn" onclick="deleteOrder('${id}')">ลบ</button>
-            <div class="order-number">#${snapshot.size - index}</div>
-            <div>ชื่อ: ${data.name || "-"}</div>
-            <div>เมนู: ${data.item || "-"}<br>หวาน: ${data.sweet || "-"}</div>
-            <div>ท้อปปิ้ง: ${data.topping || "-"}</div>
-            <div class="note">รายละเอียดเพิ่มเติม: ${data.note || "-"}</div>
-            <div class="time">เวลา: ${time}</div>
-          </div>
-        `;
-      });
-
-      ordersDiv.innerHTML = html;
-      lastOrderIds = newOrderIds;
-    });
-
-    async function deleteOrder(id) {
-      if (confirm("ลบออเดอร์นี้จริงหรือไม่?")) {
-        try {
-          await db.collection("orders").doc(id).delete();
-        } catch (e) {
-          alert("❌ ลบไม่สำเร็จ: " + e.message);
-        }
-      }
-    }
-  </script>
-</body>
-</html>
+  <button class="delete-btn" onclick="deleteOrder('${id}')">ลบ</button>
+  <div class="order-number">#${snapshot.size - index}</div>
+  <div>ชื่อ: ${data.name || "-"}</div>
+  <div>เมนู: ${data.item || "-"}<br>หวาน: ${data.sweet || "-"}</div>
+  <div>ท้อปปิ้ง: ${Array.isArray(data.topping) ? data.topping.join(", ") : (data.topping || "-")}</div>
+  <div class="note">รายละเอียดเพิ่มเติม: ${data.note || "-"}</div>
+  <div class="time">เวลา: ${time}</div>
+</div>
